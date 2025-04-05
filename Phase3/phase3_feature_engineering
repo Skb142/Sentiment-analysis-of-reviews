@@ -1,0 +1,49 @@
+import pandas as pd
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from textblob import TextBlob
+from sklearn.model_selection import train_test_split
+import joblib
+
+# Load the dataset with a specified encoding
+try:
+    df = pd.read_csv(r'C:\Users\KIIT\Desktop\PROJECT\Phase2\ebay_reviews_with_sentiment.csv', encoding='utf-8')
+except UnicodeDecodeError:
+    df = pd.read_csv(r'C:\Users\KIIT\Desktop\PROJECT\Phase2\ebay_reviews_with_sentiment.csv', encoding='ISO-8859-1')
+
+# Ensure sentiment column is correctly defined
+df['sentiment'] = df['rating'].apply(lambda x: 'positive' if x == 1 else 'negative')
+
+# Load a pre-trained BERT model for sentence embeddings
+bert_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Convert text into sentence embeddings
+X_text_embeddings = bert_model.encode(df['cleaned_text'])
+
+def get_sentiment(text):
+    return TextBlob(text).sentiment.polarity
+
+def count_negations(text):
+    negation_words = {'not', "n't", 'no', 'never', 'none', 'nowhere', 'nothing', 'neither', 'nor'}
+    return sum(1 for word in text.split() if word.lower() in negation_words)
+
+df['sentiment_score'] = df['cleaned_text'].apply(get_sentiment)
+df['negation_count'] = df['cleaned_text'].apply(count_negations)
+
+# Combine BERT embeddings with sentiment-aware features
+X_features = np.hstack((X_text_embeddings, df[['sentiment_score', 'negation_count']].values))
+y = df['sentiment']
+
+# Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X_features, y, test_size=0.2, random_state=42)
+
+# Save the processed datasets
+np.save(r'C:\Users\KIIT\Desktop\PROJECT\Phase3\X_train.npy', X_train)
+np.save(r'C:\Users\KIIT\Desktop\PROJECT\Phase3\X_test.npy', X_test)
+np.save(r'C:\Users\KIIT\Desktop\PROJECT\Phase3\y_train.npy', y_train)
+np.save(r'C:\Users\KIIT\Desktop\PROJECT\Phase3\y_test.npy', y_test)
+
+# Save the BERT model for inference
+joblib.dump(bert_model, r'C:\Users\KIIT\Desktop\PROJECT\Phase3\bert_model.pkl')
+
+print("Feature engineering with contextual embeddings and sentiment-aware features completed.")
