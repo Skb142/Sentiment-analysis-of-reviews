@@ -151,3 +151,4 @@ This project is divided into 4 main phases:
 
 ---
 
+"This is my copy of the project" 
